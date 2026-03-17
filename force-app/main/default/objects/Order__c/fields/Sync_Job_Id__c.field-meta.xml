@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Sync_Job_Id__c</fullName>
+    <label>Sync Job ID</label>
+    <type>Text</type>
+    <length>80</length>
+    <required>false</required>
+    <description>Middleware async job ID for 202 (Accepted) responses. Used for polling.</description>
+</CustomField>

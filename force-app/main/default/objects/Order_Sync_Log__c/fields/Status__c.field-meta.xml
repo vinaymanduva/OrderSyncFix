@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Status__c</fullName>
+    <label>Status</label>
+    <type>Text</type>
+    <length>50</length>
+    <required>false</required>
+    <description>Sync outcome for this attempt (Synced, Error, Pending, Failed).</description>
+</CustomField>

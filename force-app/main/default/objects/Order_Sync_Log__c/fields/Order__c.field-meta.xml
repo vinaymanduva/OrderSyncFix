@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Order__c</fullName>
+    <label>Order</label>
+    <type>Lookup</type>
+    <referenceTo>Order__c</referenceTo>
+    <relationshipName>Sync_Logs</relationshipName>
+    <relationshipLabel>Sync Logs</relationshipLabel>
+    <required>true</required>
+    <description>Parent order record this sync log belongs to.</description>
+</CustomField>

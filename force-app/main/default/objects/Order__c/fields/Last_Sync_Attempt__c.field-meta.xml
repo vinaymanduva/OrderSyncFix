@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Last_Sync_Attempt__c</fullName>
+    <label>Last Sync Attempt</label>
+    <type>DateTime</type>
+    <required>false</required>
+    <description>Timestamp of the most recent sync attempt to middleware.</description>
+</CustomField>

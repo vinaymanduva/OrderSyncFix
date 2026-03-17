@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Sync_Timestamp__c</fullName>
+    <label>Sync Timestamp</label>
+    <type>DateTime</type>
+    <required>true</required>
+    <description>When this sync attempt occurred.</description>
+</CustomField>

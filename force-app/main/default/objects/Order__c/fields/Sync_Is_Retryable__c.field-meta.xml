@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Sync_Is_Retryable__c</fullName>
+    <label>Sync Is Retryable</label>
+    <type>Checkbox</type>
+    <defaultValue>false</defaultValue>
+    <description>Whether the last sync failure is transient and eligible for automatic retry. Set by OrderSyncHandler based on HTTP response classification (5xx/timeout = true, 422 = false).</description>
+</CustomField>
