@@ -1,0 +1,105 @@
+our GTM Systems team manages a complex ecosystem of Salesforce CRM, ERP/CPQ systems, and internal platforms. We value scalable, resilient integrations that are easy to monitor, govern, and extend over time.
+Your Salesforce org syncs Orders to a middleware service (OrderSyncAPI) owned by FinEng. Middleware transforms and forwards to ERP. Finance is seeing:
+Missing orders in ERP
+Invoice amount mismatches when discounts are involved
+You’ll review a small Apex snippet, a sample payload, and a short Slack transcript. Then you’ll (1) identify issues, (2) propose targeted fixes, and (3) draft a short partner update.
+Guidelines & Deliverables
+Format: diagrams + written explanation (slides, doc, or PDF — your choice).
+Level of detail: aim for clarity and practicality — we’re not looking for exhaustive detail, but enough to show how you think through systems, risks, and trade-offs. If any details are ambiguous, state your assumptions and proceed.
+Time: keep it scoped to no more than 5 hours.
+What we’ll evaluate:
+Debug & Explain
+Identify defects and risky assumptions in the Apex + trigger.
+Pinpoint likely causes of missing orders and amount mismatches.
+Note where behavior diverges from middleware expectations.
+Propose Targeted Fixes
+Recommend the smallest set of pragmatic changes to improve reliability and auditability.
+Address error handling, idempotency, discount math, header/line reconciliation, and sync flow.
+Pseudocode or partial code updates are fine — clarity matters more than completeness.
+Partner Update (≤ 1 page)
+Write a short update to the FinEng team summarizing findings, proposed fixes, and next steps.
+Aim for clear, concise, and collaborative communication.
+Here’s the APEX code for the Service: 
+public with sharing class OrderSyncHandler {
+public static void syncOrder(Id orderId) {
+Order__c o = [SELECT Id, Name, Status__c, Amount__c, Discount__c, External_Id__c,
+(SELECT Id, ProductCode__c, Quantity__c, UnitPrice__c, LineAmount__c FROM OrderItems__r)
+FROM Order__c
+WHERE Id = :orderId
+LIMIT 1];
+if (o.Status__c != 'Activated') {
+System.debug('Order not activated, skipping');
+return;
+}
+// Build payload (note: discount field may be null)
+Map<String, Object> payload = new Map<String, Object>{
+'orderId' => (o.External_Id__c != null ? o.External_Id__c : String.valueOf(o.Id)),
+'orderName' => o.Name,
+'amount' => o.Amount__c,
+'discount' => o.Discount__c,
+'lines' => new List<Map<String, Object>>()
+};
+for (OrderItem__c i : o.OrderItems__r) {
+Decimal lineAmt = (i.UnitPrice__c * i.Quantity__c) - (o.Discount__c == null ? 0 : (o.Discount__c / o.OrderItems__r.size()));
+payload.get('lines').add(new Map<String, Object>{
+'sku' => i.ProductCode__c,
+'qty' => i.Quantity__c,
+'unitPrice' => i.UnitPrice__c,
+'amount' => lineAmt
+});
+}
+Http h = new Http();
+HttpRequest req = new HttpRequest();
+req.setEndpoint(URL.getSalesforceBaseUrl().toExternalForm() + '/services/apexrest/OrderSyncAPI');
+req.setMethod('POST');
+req.setHeader('Content-Type','application/json');
+req.setBody(JSON.serialize(payload));
+try {
+HttpResponse res = h.send(req);
+if (res.getStatusCode() == 200) {
+System.debug('Sync success: ' + res.getBody());
+} else if (res.getStatusCode() == 202) {
+System.debug('Accepted for async processing');
+} else if (res.getStatusCode() == 409) {
+System.debug('Duplicate, ignoring');
+} else {
+System.debug('Unexpected response: ' + res.getStatus() + ' body=' + res.getBody());
+}
+} catch (Exception e) {
+System.debug('Error calling OrderSyncAPI: ' + e.getMessage());
+}
+}
+}
+APEX Trigger on Order:
+trigger Order_AfterUpdate on Order__c (after update) {
+for (Order__c o : Trigger.new) {
+if (o.Status__c == 'Activated') {
+OrderSyncHandler.syncOrder(o.Id);
+}
+}
+}
+Sample Outbound JSON Payload
+{
+"orderId": "EXT-12345",
+"orderName": "ORD-000471",
+"amount": 10000.00,
+"discount": 1500.00,
+"lines": [
+{"sku": "CHAT-TEAM", "qty": 50, "unitPrice": 150.00, "amount": 5850.00},
+{"sku": "API-COMMIT", "qty": 1, "unitPrice": 4500.00, "amount": 2650.00},
+{"sku": "SUPPORT-PREM", "qty": 1, "unitPrice": 2000.00, "amount": 0.00}
+]
+}
+Middleware Responses
+Status Example Response
+200 OK {"status":"ok","erpOrderId":"ERP-78901"}
+202 Accepted {"status":"accepted","jobId":"JOB-4421"}
+409 Conflict {"status":"duplicate","existingErpOrderId":"ERP-78901"}
+422 Unprocessable Entity {"error":"DISCOUNT_NULL","message":"discount must be provided or explicitly set to 0"}
+500 Server Error {"error":"INTERNAL","message":"timeout downstream"}
+Slack Snippet from FinEng
+FinEng: Hey team, seeing intermittent failures on /orders when discount is null.
+We also noticed some orders are posted multiple times with slightly different line amounts (rounding?), which causes ERP to reject with 409 or 422 depending on payload diff.
+If we reply 202, we expect a callback or a status poll, but we’re not getting either.
+Also, the total at header doesn’t always equal the sum of line amounts.
+
